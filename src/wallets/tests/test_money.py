@@ -2,9 +2,9 @@ import math
 
 import pytest
 
-from src.wallets.currency import rub, usd
-from src.wallets.exceptions import NegativeValueException, NotComparisonException
-from src.wallets.money import Money, Wallet
+from ..currency import rub, usd
+from ..exceptions import NegativeValueException, NotComparisonException
+from ..money import Money, Wallet
 
 
 class TestMoney:
