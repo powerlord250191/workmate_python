@@ -1,6 +1,6 @@
 import pytest
 
-from src.descriptors import models
+from workmate_python.src.descriptors import models
 
 
 class Model(models.Model):
