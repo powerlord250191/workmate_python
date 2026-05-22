@@ -86,3 +86,4 @@ db.sqlite3
 
 # PyCharm
 .idea
+./DataBase/config.env
