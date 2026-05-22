@@ -1,6 +1,10 @@
-from database import Base
+from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy import Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
 
 
 class Genre(Base):
