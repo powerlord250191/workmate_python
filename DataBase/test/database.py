@@ -1,8 +1,7 @@
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 
 from config import DB_HOST, DB_NAME, DB_PASS, DB_PORT, DB_USER
-from models import Base, Genre, Author, Book, City, Client, Buy, BuyBook, BuyStep
+from models import *
 
 
 if __name__ == "__main__":

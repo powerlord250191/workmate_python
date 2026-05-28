@@ -88,3 +88,4 @@ db.sqlite3
 .idea
 ./DataBase/config.env
 /DataBase/config.env
+/DataBase/work_task/bulletins/
