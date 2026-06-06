@@ -1,13 +1,30 @@
+import os.path
 import re
+from logging import getLogger, basicConfig, INFO, FileHandler
+from multiprocessing import cpu_count, Pool
+from datetime import datetime
 from pprint import pprint
+
 import pdfplumber
 import pandas as pd
+import warnings
 
-"""
-Разбить на uio co задачи и 
-ассинхроность применять там где uio задачи, 
-cio решать через мультипроцессинг 
-"""
+
+pd.set_option('mode.chained_assignment', None)
+warnings.simplefilter('ignore')
+
+basicConfig(
+    level=INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    encoding="utf-8",
+    handlers=[FileHandler(filename='logs_reader.log')]
+)
+
+logger = getLogger(__name__)
+
+
+class RedingException(Exception):
+    pass
 
 
 def reading_bulletin_by_text_xls(xls_path: str) -> list[dict]:
@@ -19,6 +36,9 @@ def reading_bulletin_by_text_xls(xls_path: str) -> list[dict]:
     for i in range(len(df)):
         if "Дата торгов:" in df.iloc[i, 1]:
             date = df.iloc[i, 1][-10::].strip()
+            if len(date.split('.')[-1]) == 3:
+                date = date + '0'
+            date = datetime.strptime(date, '%d.%m.%Y').date()
         if df.iloc[i, 1] == 'Код\nИнструмента':
             header_row = i
             break
@@ -70,7 +90,7 @@ def reading_bulletin_by_text_xls(xls_path: str) -> list[dict]:
         'exchange_product_name',
         'total',
         'volume',
-        )
+    )
     result = []
     for line in data_dict:
         clear_data = dict()
@@ -84,7 +104,7 @@ def reading_bulletin_by_text_xls(xls_path: str) -> list[dict]:
     return result
 
 
-def clear_data_pdf(pdf_path: str) -> tuple[list, str]:
+def clear_data_pdf(pdf_path: str) -> tuple[list, datetime]:
     data = []
     date = ''
 
@@ -98,6 +118,9 @@ def clear_data_pdf(pdf_path: str) -> tuple[list, str]:
             for num, line in enumerate(text):
                 if "Дата торгов:" in line:
                     date = line[-10:-1].strip()
+                    if len(date.split('.')[-1]) == 3:
+                        date = date + '0'
+                    date = datetime.strptime(date, '%d.%m.%Y').date()
                 if 'Единица измерения: Метрическая тонна' in line:
                     result = data[0][num::]
                     break
@@ -153,3 +176,31 @@ def reading_bulletin_by_text_pdf(pdf_path: str) -> list[dict]:
                         'date': date,
                     })
     return result_dict
+
+
+def process_single_file(file_path: str) -> list[dict[str]]:
+
+    try:
+        if not os.path.exists(file_path):
+            logger.info(f"Файл не найден:  {file_path}")
+
+        if file_path.endswith('.xls'):
+            data = reading_bulletin_by_text_xls(file_path)
+        elif file_path.endswith('.pdf'):
+            data = reading_bulletin_by_text_pdf(file_path)
+        else:
+            logger.info(f'Неподдерживаемый тип файла {file_path}')
+    except RedingException("Ошибка чтения файла") as e:
+        logger.error(f"Ошибка чтения файла {str(e)}")
+
+    return data
+
+
+def process_files_parallel(file_paths: list[str], num_process: int = None) -> list[dict]:
+    if num_process is None:
+        num_process = cpu_count() - 1
+    with Pool(processes=num_process) as pool:
+        results = pool.map(process_single_file, file_paths)
+    clear_results = [i for result in results for i in result if i is not None]
+
+    return clear_results

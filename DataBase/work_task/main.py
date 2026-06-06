@@ -1,4 +1,5 @@
 import os
+from time import time
 from scripts import engine
 from parser import start_parsing_bilutens
 from initial_db import initial_db
@@ -6,10 +7,12 @@ from reader import reading_bulletin_by_text_xls,reading_bulletin_by_text_pdf
 from scripts import insert_data_to_database
 
 if __name__ == '__main__':
+    print("Начало выполнения программы")
+    begin = time()
 
     initial_db(engine)  # если запускаем первый раз, раскомментировать эту строчку
 
-    # start_parsing_bilutens()    # если биллютени ещё не спарсены, вызываем эту функцию
+    start_parsing_bilutens()    # если биллютени ещё не спарсены, вызываем эту функцию
 
     folder_path = "bulletins"
 
@@ -23,3 +26,6 @@ if __name__ == '__main__':
             continue
 
         insert_data_to_database(data=data_dict)
+
+    end = time()
+    print(f"Конец работы программы время работы - {round(end - begin, 2)}")

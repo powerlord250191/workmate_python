@@ -3,7 +3,7 @@ import os
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
-from typing import List, Dict, Optional
+from typing import Optional
 
 BASE_URL = "https://spimex.com"
 HEADERS = {
