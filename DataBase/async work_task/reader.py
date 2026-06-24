@@ -178,19 +178,19 @@ def reading_bulletin_by_text_pdf(pdf_path: str) -> list[dict]:
     return result_dict
 
 
-def process_single_file(file_path: str) -> list[dict[str]]:
+def process_single_file(file_path: str) -> list[dict[str]] | None:
 
     try:
         if not os.path.exists(file_path):
             logger.info(f"Файл не найден:  {file_path}")
-
+            return None
         if file_path.endswith('.xls'):
             data = reading_bulletin_by_text_xls(file_path)
         elif file_path.endswith('.pdf'):
             data = reading_bulletin_by_text_pdf(file_path)
         else:
             logger.info(f'Неподдерживаемый тип файла {file_path}')
-    except RedingException("Ошибка чтения файла") as e:
+    except RedingException as e:
         logger.error(f"Ошибка чтения файла {str(e)}")
 
     return data

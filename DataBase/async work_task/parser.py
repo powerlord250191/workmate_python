@@ -94,6 +94,7 @@ async def start_parsing_bulletins():
     start_url = f"{BASE_URL}/{prefix}"
 
     async with aiohttp.ClientSession() as session:
+        #   добавить ретрай здесь, на случай неудачной попытки получения данных с сайта
         async with session.get(start_url, headers=HEADERS) as response:
             response.raise_for_status()
             html = await response.text()
@@ -120,11 +121,14 @@ async def start_parsing_bulletins():
 
                 all_bulletins.extend(bulletins)
 
+                tasks = []
                 for bulletin in bulletins:
-                    try:
-                        path = await download_bulletin(session, bulletin)
-                    except Exception as e:
-                        logger.info(f"Ошибка при скачивании {path}: {e}")
+                    tasks.append(asyncio.create_task(download_bulletin(session, bulletin)))
+
+                results = await asyncio.gather(*tasks, return_exceptions=True)
+                for task in results:
+                    if isinstance(task, Exception):
+                        logger.info(f"Ошибка при скачивании {task}")
 
             await asyncio.sleep(3)  # Задержка между страницами
 

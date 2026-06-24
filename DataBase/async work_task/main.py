@@ -21,7 +21,7 @@ logger = getLogger(__name__)
 if __name__ == '__main__':
     begin = time()
     logger.info(f"Начало выполнения программы - {round(begin, 6)}")
-    print(f"Начало выполнения программы - {round(begin, 6)}")
+    # print(f"Начало выполнения программы - {round(begin, 6)}")
     initial_db(sync_engine)  # если запускаем первый раз, раскомментировать эту строчку
 
     asyncio.run(start_parsing_bulletins())   # если биллютени ещё не спарсены, вызываем эту функцию
@@ -34,5 +34,5 @@ if __name__ == '__main__':
         asyncio.run(insert_data_to_database(ready_to_insert_data))
 
     end = time()
-    logger.info(f"Конец работы программы время работы - {round(end - begin, 6)}")
-    print(f"Конец работы программы время работы - {round(end - begin, 6)}")
+    logger.info(f"Конец работы программы время работы - {round(end - begin / 60, 6)}")
+#     print(f"Конец работы программы время работы - {round(end - begin, 6)}")
