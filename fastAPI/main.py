@@ -1,14 +1,20 @@
-from datetime import date, datetime
-from typing import Optional, List
+from datetime import datetime
 import logging
+from typing import Any
 from fastapi import FastAPI, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from pydantic import BaseModel, Field, field_validator
 
 from database import get_db
 from services import TradingService
-from schemas import TradingResultResponse, TradingDateResponse
+from schemas import (
+    TradingResultResponse,
+    TradingDateResponse,
+    TradingResultsParams,
+    LastTradingDatesParams,
+    DynamicsParams,
+)
 from cache import cache_service
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -22,44 +28,9 @@ app = FastAPI(
 last_cache_reset = None
 
 
-class LastTradingDatesParams(BaseModel):
-    limit: int = Field(..., ge=1, le=365, description="Количество последних торговых дней (1-365)")
-
-
-class DynamicsParams(BaseModel):
-    """Параметры для запроса динамики торгов за период"""
-    start_date: date = Field(..., description="Дата начала периода (обязательно)")
-    end_date: date = Field(..., description="Дата конца периода (обязательно)")
-    oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID нефтепродукта")
-    delivery_type_id: Optional[str] = Field(None, min_length=1, max_length=1, description="ID типа поставки")
-    delivery_basis_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
-
-    @field_validator('start_date', 'end_date')
-    @classmethod
-    def validate_dates(cls, v):
-        if v > date.today():
-            raise ValueError('Дата не может быть в будущем')
-        return v
-
-    @field_validator('end_date')
-    @classmethod
-    def validate_date_range(cls, v, info):
-        start_date = info.data.get('start_date')
-        if start_date and v < start_date:
-            raise ValueError('Дата начала должна быть раньше даты конца')
-        return v
-
-
-class TradingResultsParams(BaseModel):
-    """Параметры для запроса последних торгов"""
-    oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID продукта")
-    delivery_type_id: Optional[str] = Field(None, min_length=1, max_length=1, description="ID типа поставки")
-    delivery_basis_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
-
-
 # ==================== Cache Functions ====================
 
-async def clear_cache_if_needed():
+async def clear_cache_if_needed() -> None:
     """Проверяет и сбрасывает кэш в 14:11"""
     global last_cache_reset
     try:
@@ -77,7 +48,7 @@ async def clear_cache_if_needed():
 
 
 @app.on_event("startup")
-async def startup_event():
+async def startup_event() -> None:
     global last_cache_reset
     try:
         await cache_service.clear_cache()
@@ -87,10 +58,8 @@ async def startup_event():
         logger.warning(f"Ошибка при инициализации кэша: {e}")
 
 
-# Endpoints
-
 @app.get("/", tags=["Root"])
-async def root():
+async def root() -> dict[str, str | dict]:
     """Корневой эндпоинт с информацией о сервисе"""
     return {
         "status": "OK",
@@ -106,16 +75,12 @@ async def root():
     }
 
 
-@app.get("/last_trading_dates", response_model=List[TradingDateResponse], tags=["Trading"])
+@app.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
         params: LastTradingDatesParams = Depends(),
         db: AsyncSession = Depends(get_db),
-):
-    """
-    Список дат последних торговых дней
+) -> list[TradingDateResponse]:
 
-    - **limit**: количество последних торговых дней (обязательно, от 1 до 365)
-    """
     await clear_cache_if_needed()
 
     cache_params = {"limit": params.limit}
@@ -126,21 +91,11 @@ async def get_last_trading_dates(
     return await cache_service.get_or_set("last_trading_dates", cache_params, fetch)
 
 
-@app.get("/dynamics", response_model=List[TradingResultResponse], tags=["Trading"])
+@app.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
         params: DynamicsParams = Depends(),
         db: AsyncSession = Depends(get_db),
-):
-    """
-    Список торгов за заданный период
-
-    - **start_date**: дата начала периода (обязательно)
-    - **end_date**: дата конца периода (обязательно)
-    - **oil_id**: ID нефтепродукта (опционально)
-    - **delivery_type_id**: ID типа поставки (опционально)
-    - **delivery_basis_id**: ID базиса поставки (опционально)
-    """
-    await clear_cache_if_needed()
+) -> list[TradingResultResponse]:
 
     cache_params = {
         "start_date": str(params.start_date),
@@ -163,19 +118,11 @@ async def get_dynamics(
     return await cache_service.get_or_set("dynamics", cache_params, fetch)
 
 
-@app.get("/trading_results", response_model=List[TradingResultResponse], tags=["Trading"])
+@app.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
         params: TradingResultsParams = Depends(),
         db: AsyncSession = Depends(get_db)
-):
-    """
-    Список последних торгов (только последняя дата)
-
-    - **oil_id**: ID продукта (опционально)
-    - **delivery_type_id**: ID типа поставки (опционально)
-    - **delivery_basis_id**: ID базиса поставки (опционально)
-    """
-    await clear_cache_if_needed()
+) -> list[TradingResultResponse]:
 
     cache_params = {
         "oil_id": params.oil_id,
@@ -195,7 +142,7 @@ async def get_trading_results(
 
 
 @app.get("/health", tags=["Health"])
-async def health_check():
+async def health_check() -> dict[str, str | Any]:
     """Проверка работоспособности сервиса"""
     return {
         "status": "healthy",
@@ -205,9 +152,8 @@ async def health_check():
 
 
 @app.get("/cache/status", tags=["Cache"])
-async def cache_status():
+async def cache_status() -> dict[str, str | Any]:
     try:
-        # Пробуем выполнить ping Redis
         await cache_service.redis.ping()
         redis_status = "connected"
     except Exception:
@@ -218,8 +164,3 @@ async def cache_status():
         "last_cache_reset": last_cache_reset.isoformat() if last_cache_reset else None
     }
 
-
-if __name__ == '__main__':
-    import uvicorn
-
-    uvicorn.run(app, host="0.0.0.0", port=8000)

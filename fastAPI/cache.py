@@ -1,7 +1,7 @@
 import redis.asyncio as redis
 from datetime import datetime, timedelta
 import json
-from config import Config
+from schemas import Config
 
 
 class CacheService:
@@ -9,8 +9,8 @@ class CacheService:
         self.redis = redis.Redis.from_url(
             Config.REDIS_URL,
             decode_responses=True,
-            socket_timeout=2,  # Таймаут на операцию 2 сек
-            socket_connect_timeout=2,  # Таймаут на подключение 2 сек
+            socket_timeout=2,
+            socket_connect_timeout=2,
             retry_on_timeout=True
         )
         self.reset_time = Config.CACHE_RESET_TIME

@@ -13,11 +13,3 @@ DB_PORT = os.environ.get('DB_PORT')
 DB_USER = os.environ.get('DB_USER')
 DB_PASS = os.environ.get('DB_PASS')
 
-
-class Config:
-    DATABASE_URL = (f"postgresql+asyncpg://"
-                    f"{DB_USER}:{DB_PASS}@"
-                    f"{DB_HOST}:{DB_PORT}/"
-                    f"{DB_NAME}")
-    REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-    CACHE_RESET_TIME = "14:11"  # Время сброса кэша
