@@ -1,0 +1,82 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: spimex_postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spimex_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: spimex_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - spimex_network
+
+  app:
+    build: .
+    container_name: spimex_app
+    ports:
+      - "8000:8000"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - spimex_network
+    restart: unless-stopped
+
+  migrations:
+    build: .
+    container_name: spimex_migrations
+    command: python -c "import asyncio; from database import engine, Base; from models import SpimexTradingResult; import asyncio; asyncio.run(engine.run_sync(Base.metadata.create_all));"
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${DB_USER}
+      - DB_PASS=${DB_PASS}
+      - DB_NAME=${DB_NAME}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - spimex_network
+    restart: "no"
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  spimex_network:
+    driver: bridge

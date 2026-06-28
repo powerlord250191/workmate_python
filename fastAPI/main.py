@@ -59,7 +59,7 @@ async def startup_event() -> None:
 
 
 @app.get("/", tags=["Root"])
-async def root() -> dict[str, str | dict]:
+async def root() -> dict[str, str | dict[str, str]]:
     """Корневой эндпоинт с информацией о сервисе"""
     return {
         "status": "OK",
