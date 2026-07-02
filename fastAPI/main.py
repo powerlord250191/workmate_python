@@ -49,14 +49,14 @@ async def get_last_trading_dates(
 
     cache_params = {"limit": params.limit}
 
-    service = TradingService()
-    result = await service.get_last_trading_dates(params.limit)
+    service = TradingService(limit=params.limit)
+    result = await service.get_last_trading_dates()
     return await cache_service.get_or_set("last_trading_dates", cache_params, result)
 
 
 @app.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
-        params: DynamicsParams = Depends() # избавиться от зависимости сессии должно быть так trading_service: TradingService = Depends(get_trading_service)
+        params: DynamicsParams = Depends()
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -67,14 +67,15 @@ async def get_dynamics(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    service = TradingService()
+    service = TradingService(
+        oil_id=params.oil_id,
+        delivery_type_id=params.delivery_type_id,
+        delivery_basis_id=params.delivery_basis_id
+    )
     result = await service.get_dynamics(
-            params.start_date,
-            params.end_date,
-            params.oil_id,
-            params.delivery_type_id,
-            params.delivery_basis_id
-        )
+        start_date=params.start_date,
+        end_date=params.end_date,
+    )
 
     return await cache_service.get_or_set("dynamics", cache_params, result)
 
@@ -90,12 +91,12 @@ async def get_trading_results(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    service = TradingService()
-    result = await service.get_trading_results(
-            params.oil_id,
-            params.delivery_type_id,
-            params.delivery_basis_id,
-        )
+    service = TradingService(
+        oil_id=params.oil_id,
+        delivery_type_id=params.delivery_type_id,
+        delivery_basis_id=params.delivery_basis_id,
+    )
+    result = await service.get_trading_results()
 
     return await cache_service.get_or_set("trading_results", cache_params, result)
 

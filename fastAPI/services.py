@@ -9,13 +9,21 @@ from database import AsyncSessionLocal
 
 class TradingService:
 
-    def __init__(self):
+    def __init__(
+            self,
+            limit: int = 10,
+            oil_id: Optional[str] = None,
+            delivery_type_id: Optional[str] = None,
+            delivery_basis_id: Optional[str] = None,
+    ):
         self.session = AsyncSessionLocal
+        self.limit = limit
+        self.oil_id = oil_id
+        self.delivery_type_id = delivery_type_id
+        self.delivery_basis_id = delivery_basis_id
 
-    async def get_last_trading_dates(self,
-                                     limit: int = 10
-                                     ) -> list[dict[str, str | None]]:
-        effective_limit = max(1, limit)
+    async def get_last_trading_dates(self) -> list[dict[str, str | None]]:
+        effective_limit = max(1, self.limit)
         async with self.session() as session:
             query = (
                 select(
@@ -40,16 +48,11 @@ class TradingService:
 
     async def get_dynamics(
             self,
-            start_date: date,
-            end_date: date,
-            oil_id: Optional[str] = None,
-            delivery_type_id: Optional[str] = None,
-            delivery_basis_id: Optional[str] = None,
+            start_date,
+            end_date,
     ) -> list[TradingResultResponse]:
 
-        conditions = TradingService()._build_dynamics_conditions(
-            start_date, end_date, oil_id, delivery_type_id, delivery_basis_id
-        )
+        conditions = TradingService()._build_dynamics_conditions(start_date, end_date)
 
         async with self.session() as session:
             query = (
@@ -66,12 +69,7 @@ class TradingService:
 
         return TradingService._serialize_results(rows)
 
-    async def get_trading_results(
-            self,
-            oil_id: Optional[str] = None,
-            delivery_type_id: Optional[str] = None,
-            delivery_basis_id: Optional[str] = None
-    ) -> list[TradingResultResponse]:
+    async def get_trading_results(self) -> list[TradingResultResponse]:
 
         async with self.session() as session:
             last_date = await TradingService()._get_last_trading_date()
@@ -79,9 +77,7 @@ class TradingService:
             if last_date is None:
                 return []
 
-            conditions = TradingService()._build_results_conditions(
-                last_date, oil_id, delivery_type_id, delivery_basis_id
-            )
+            conditions = TradingService()._build_results_conditions(last_date)
 
             query = (
                 select(SpimexTradingResult)
@@ -98,9 +94,6 @@ class TradingService:
             self,
             start_date: date,
             end_date: date,
-            oil_id: Optional[str],
-            delivery_type_id: Optional[str],
-            delivery_basis_id: Optional[str]
     ) -> list:
 
         conditions = [
@@ -109,7 +102,7 @@ class TradingService:
         ]
 
         conditions.extend(
-            TradingService()._build_optional_filters(oil_id, delivery_type_id, delivery_basis_id)
+            TradingService()._build_optional_filters()
         )
 
         return conditions
@@ -117,32 +110,26 @@ class TradingService:
     def _build_results_conditions(
             self,
             last_date: date,
-            oil_id: Optional[str],
-            delivery_type_id: Optional[str],
-            delivery_basis_id: Optional[str]
     ) -> list:
         conditions = [SpimexTradingResult.date == last_date]
 
         conditions.extend(
-            TradingService()._build_optional_filters(oil_id, delivery_type_id, delivery_basis_id)
+            TradingService()._build_optional_filters()
         )
 
         return conditions
 
     def _build_optional_filters(
-            self,
-            oil_id: Optional[str],
-            delivery_type_id: Optional[str],
-            delivery_basis_id: Optional[str]
+            self
     ) -> list:
         conditions = []
 
-        if oil_id:
-            conditions.append(SpimexTradingResult.oil_id == oil_id)
-        if delivery_type_id:
-            conditions.append(SpimexTradingResult.delivery_type_id == delivery_type_id)
-        if delivery_basis_id:
-            conditions.append(SpimexTradingResult.delivery_basis_id == delivery_basis_id)
+        if self.oil_id:
+            conditions.append(SpimexTradingResult.oil_id == self.oil_id)
+        if self.delivery_type_id:
+            conditions.append(SpimexTradingResult.delivery_type_id == self.delivery_type_id)
+        if self.delivery_basis_id:
+            conditions.append(SpimexTradingResult.delivery_basis_id == self.delivery_basis_id)
 
         return conditions
 
