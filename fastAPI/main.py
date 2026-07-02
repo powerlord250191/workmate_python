@@ -25,42 +25,9 @@ app = FastAPI(
     description="API для работы с данными биржевых торгов"
 )
 
-last_cache_reset = None
-
-
-# ==================== Cache Functions ====================
-
-async def clear_cache_if_needed() -> None:
-    """Проверяет и сбрасывает кэш в 14:11"""
-    global last_cache_reset
-    try:
-        now = datetime.now()
-        reset_time = datetime.strptime("14:11", "%H:%M").replace(
-            year=now.year, month=now.month, day=now.day
-        )
-
-        if last_cache_reset is None or (now >= reset_time and last_cache_reset < reset_time):
-            await cache_service.clear_cache()
-            last_cache_reset = now
-            logger.info(f"Кэш сброшен в {now.strftime('%H:%M:%S')}")
-    except Exception as e:
-        logger.warning(f"Ошибка при очистке кэша: {e}")
-
-
-@app.on_event("startup")
-async def startup_event() -> None:
-    global last_cache_reset
-    try:
-        await cache_service.clear_cache()
-        last_cache_reset = datetime.now()
-        logger.info("Кэш инициализирован")
-    except Exception as e:
-        logger.warning(f"Ошибка при инициализации кэша: {e}")
-
 
 @app.get("/", tags=["Root"])
 async def root() -> dict[str, str | dict[str, str]]:
-    """Корневой эндпоинт с информацией о сервисе"""
     return {
         "status": "OK",
         "service": "Spimex Trading API",
@@ -77,24 +44,19 @@ async def root() -> dict[str, str | dict[str, str]]:
 
 @app.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
-        params: LastTradingDatesParams = Depends(),
-        db: AsyncSession = Depends(get_db),
+        params: LastTradingDatesParams = Depends()
 ) -> list[TradingDateResponse]:
-
-    await clear_cache_if_needed()
 
     cache_params = {"limit": params.limit}
 
-    async def fetch():
-        return await TradingService.get_last_trading_dates(db, params.limit)
-
-    return await cache_service.get_or_set("last_trading_dates", cache_params, fetch)
+    service = TradingService()
+    result = await service.get_last_trading_dates(params.limit)
+    return await cache_service.get_or_set("last_trading_dates", cache_params, result)
 
 
 @app.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
-        params: DynamicsParams = Depends(),
-        db: AsyncSession = Depends(get_db),
+        params: DynamicsParams = Depends() # избавиться от зависимости сессии должно быть так trading_service: TradingService = Depends(get_trading_service)
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -105,9 +67,8 @@ async def get_dynamics(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    async def fetch():
-        return await TradingService.get_dynamics(
-            db,
+    service = TradingService()
+    result = await service.get_dynamics(
             params.start_date,
             params.end_date,
             params.oil_id,
@@ -115,13 +76,12 @@ async def get_dynamics(
             params.delivery_basis_id
         )
 
-    return await cache_service.get_or_set("dynamics", cache_params, fetch)
+    return await cache_service.get_or_set("dynamics", cache_params, result)
 
 
 @app.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
-        params: TradingResultsParams = Depends(),
-        db: AsyncSession = Depends(get_db)
+        params: TradingResultsParams = Depends()
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -130,20 +90,18 @@ async def get_trading_results(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    async def fetch():
-        return await TradingService.get_trading_results(
-            db,
+    service = TradingService()
+    result = await service.get_trading_results(
             params.oil_id,
             params.delivery_type_id,
             params.delivery_basis_id,
         )
 
-    return await cache_service.get_or_set("trading_results", cache_params, fetch)
+    return await cache_service.get_or_set("trading_results", cache_params, result)
 
 
 @app.get("/health", tags=["Health"])
-async def health_check() -> dict[str, str | Any]:
-    """Проверка работоспособности сервиса"""
+async def health_check() -> dict[str, str | datetime]:
     return {
         "status": "healthy",
         "service": "Spimex Trading API",
@@ -152,7 +110,7 @@ async def health_check() -> dict[str, str | Any]:
 
 
 @app.get("/cache/status", tags=["Cache"])
-async def cache_status() -> dict[str, str | Any]:
+async def cache_status() -> dict[str, str | None]:
     try:
         await cache_service.redis.ping()
         redis_status = "connected"
@@ -161,6 +119,5 @@ async def cache_status() -> dict[str, str | Any]:
 
     return {
         "redis": redis_status,
-        "last_cache_reset": last_cache_reset.isoformat() if last_cache_reset else None
+        "last_cache_reset": None
     }
-

@@ -1,7 +1,11 @@
+import logging
 import redis.asyncio as redis
 from datetime import datetime, timedelta
 import json
 from schemas import Config
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class CacheService:
@@ -13,17 +17,15 @@ class CacheService:
             socket_connect_timeout=2,
             retry_on_timeout=True
         )
-        self.reset_time = Config.CACHE_RESET_TIME
 
     def _get_cache_key(self, prefix: str, params: dict) -> str:
-        """Формирует ключ для кэша на основе параметров"""
         sorted_params = sorted(params.items())
         param_str = "_".join(f"{k}={v}" for k, v in sorted_params if v is not None)
         return f"{prefix}:{param_str}" if param_str else prefix
 
-    def _get_ttl(self) -> int:
+    def _get_ttl(self):
         now = datetime.now()
-        reset_time = datetime.strptime(self.reset_time, "%H:%M").replace(
+        reset_time = datetime.strptime("14:11", "%H:%M").replace(
             year=now.year, month=now.month, day=now.day
         )
 
@@ -34,7 +36,6 @@ class CacheService:
         return max(ttl, 1)
 
     async def get(self, prefix: str, params: dict):
-        """Получает данные из кэша"""
         key = self._get_cache_key(prefix, params)
         try:
             data = await self.redis.get(key)
@@ -52,19 +53,12 @@ class CacheService:
         except Exception as e:
             print(f"Ошибка при записи кэша: {e}")
 
-    async def clear_cache(self):
-        try:
-            await self.redis.flushdb()
-        except Exception as e:
-            print(f"Ошибка при очистке кэша: {e}")
-
-    async def get_or_set(self, prefix: str, params: dict, func):
-        """Получает из кэша или выполняет функцию и кэширует результат"""
+    async def get_or_set(self, prefix: str, params: dict, data):
         cached = await self.get(prefix, params)
         if cached is not None:
             return cached
 
-        result = await func()
+        result = data
         await self.set(prefix, params, result)
         return result
 

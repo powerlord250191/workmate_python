@@ -35,11 +35,11 @@ class TradingResultBase(BaseModel):
 
 class TradingResultResponse(TradingResultBase):
     id: int
-    created_on: datetime
-    updated_on: datetime
+    created_on: datetime = None
+    updated_on: datetime = None
 
-    # class Config:
-    #     from_attributes = True
+    class Config:
+        from_attributes = True
 
 
 class TradingDateResponse(BaseModel):

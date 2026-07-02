@@ -5,7 +5,7 @@ from sqlalchemy import (
 )
 
 
-str_200 = mapped_column(String(200))
+str_200 = String(200)
 
 
 class Base(DeclarativeBase):
@@ -20,11 +20,15 @@ class SpimexTradingResult(Base):
     exchange_product_name: Mapped[str] = mapped_column(String(400))
     created_on: Mapped[datetime] = mapped_column(default=datetime.now)
     updated_on: Mapped[datetime] = mapped_column(default=datetime.now, onupdate=datetime.now)
-    oil_id: Mapped[str] = str_200
-    delivery_basis_id: Mapped[str] = str_200
-    delivery_basis_name: Mapped[str] = str_200
-    delivery_type_id: Mapped[str] = str_200
+    oil_id: Mapped[str] = mapped_column(str_200)
+    delivery_basis_id: Mapped[str] = mapped_column(str_200)
+    delivery_basis_name: Mapped[str] = mapped_column(str_200)
+    delivery_type_id: Mapped[str] = mapped_column(str_200)
     volume: Mapped[float]
     total: Mapped[float]
     count: Mapped[int]
     date: Mapped[datetime]
+
+    # def __repr__(self):
+    #     return (f"{self.id}, {self.date}, {self.oil_id}, {self.total}"
+    #             f"{self.volume}, {self.total}, {self.count}, {self.date}")
