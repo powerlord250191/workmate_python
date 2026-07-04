@@ -1,11 +1,12 @@
 from datetime import datetime
 import logging
-from typing import Any
 from fastapi import FastAPI, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import get_db
-from services import TradingService
+from services import (
+    TradingService,
+    TradingSerializer,
+    TradingRepository,
+)
 from schemas import (
     TradingResultResponse,
     TradingDateResponse,
@@ -26,6 +27,12 @@ app = FastAPI(
 )
 
 
+def get_trading_service() -> TradingService:
+    repository = TradingRepository()
+    serializer = TradingSerializer()
+    return TradingService(repository, serializer)
+
+
 @app.get("/", tags=["Root"])
 async def root() -> dict[str, str | dict[str, str]]:
     return {
@@ -44,19 +51,20 @@ async def root() -> dict[str, str | dict[str, str]]:
 
 @app.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
-        params: LastTradingDatesParams = Depends()
+        params: LastTradingDatesParams,
+        service: TradingService = Depends(get_trading_service),
 ) -> list[TradingDateResponse]:
 
     cache_params = {"limit": params.limit}
 
-    service = TradingService(limit=params.limit)
-    result = await service.get_last_trading_dates()
+    result = await service.get_last_trading_dates(params.limit)
     return await cache_service.get_or_set("last_trading_dates", cache_params, result)
 
 
 @app.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
-        params: DynamicsParams = Depends()
+        params: DynamicsParams = Depends(),
+        service: TradingService = Depends(get_trading_service),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -67,12 +75,10 @@ async def get_dynamics(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    service = TradingService(
+    result = await service.get_dynamics(
         oil_id=params.oil_id,
         delivery_type_id=params.delivery_type_id,
-        delivery_basis_id=params.delivery_basis_id
-    )
-    result = await service.get_dynamics(
+        delivery_basis_id=params.delivery_basis_id,
         start_date=params.start_date,
         end_date=params.end_date,
     )
@@ -82,7 +88,8 @@ async def get_dynamics(
 
 @app.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
-        params: TradingResultsParams = Depends()
+        params: TradingResultsParams = Depends(),
+        service: TradingService = Depends(get_trading_service),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -91,12 +98,11 @@ async def get_trading_results(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    service = TradingService(
+    result = await service.get_trading_results(
         oil_id=params.oil_id,
         delivery_type_id=params.delivery_type_id,
         delivery_basis_id=params.delivery_basis_id,
     )
-    result = await service.get_trading_results()
 
     return await cache_service.get_or_set("trading_results", cache_params, result)
 

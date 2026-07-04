@@ -52,7 +52,6 @@ class LastTradingDatesParams(BaseModel):
 
 
 class DynamicsParams(BaseModel):
-    """Параметры для запроса динамики торгов за период"""
     start_date: date_type = Field(..., description="Дата начала периода (обязательно)")
     end_date: date_type = Field(..., description="Дата конца периода (обязательно)")
     oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID нефтепродукта")
@@ -76,7 +75,6 @@ class DynamicsParams(BaseModel):
 
 
 class TradingResultsParams(BaseModel):
-    """Параметры для запроса последних торгов"""
     oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID продукта")
     delivery_type_id: Optional[str] = Field(None, min_length=1, max_length=1, description="ID типа поставки")
     delivery_basis_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
