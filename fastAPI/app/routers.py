@@ -1,11 +1,8 @@
 from datetime import datetime
-import logging
-from fastapi import FastAPI, Depends
-
+from typing import Annotated
+from fastapi import Depends, Query, APIRouter
 from services import (
     TradingService,
-    TradingSerializer,
-    TradingRepository,
 )
 from schemas import (
     TradingResultResponse,
@@ -14,17 +11,11 @@ from schemas import (
     LastTradingDatesParams,
     DynamicsParams,
 )
+from repositories import TradingRepository
+from serializers import TradingSerializer
 from cache import cache_service
 
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-app = FastAPI(
-    title="Spimex Trading API",
-    version="1.0.0",
-    description="API для работы с данными биржевых торгов"
-)
+router = APIRouter()
 
 
 def get_trading_service() -> TradingService:
@@ -33,7 +24,7 @@ def get_trading_service() -> TradingService:
     return TradingService(repository, serializer)
 
 
-@app.get("/", tags=["Root"])
+@router.get("/", tags=["Root"])
 async def root() -> dict[str, str | dict[str, str]]:
     return {
         "status": "OK",
@@ -49,9 +40,9 @@ async def root() -> dict[str, str | dict[str, str]]:
     }
 
 
-@app.get("/last_trading_dates", tags=["Trading"])
+@router.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
-        params: LastTradingDatesParams,
+        params: Annotated[LastTradingDatesParams, Query()],
         service: TradingService = Depends(get_trading_service),
 ) -> list[TradingDateResponse]:
 
@@ -61,7 +52,7 @@ async def get_last_trading_dates(
     return await cache_service.get_or_set("last_trading_dates", cache_params, result)
 
 
-@app.get("/dynamics", tags=["Trading"])
+@router.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
         params: DynamicsParams = Depends(),
         service: TradingService = Depends(get_trading_service),
@@ -86,7 +77,7 @@ async def get_dynamics(
     return await cache_service.get_or_set("dynamics", cache_params, result)
 
 
-@app.get("/trading_results", tags=["Trading"])
+@router.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
         params: TradingResultsParams = Depends(),
         service: TradingService = Depends(get_trading_service),
@@ -107,7 +98,7 @@ async def get_trading_results(
     return await cache_service.get_or_set("trading_results", cache_params, result)
 
 
-@app.get("/health", tags=["Health"])
+@router.get("/health", tags=["Health"])
 async def health_check() -> dict[str, str | datetime]:
     return {
         "status": "healthy",
@@ -116,7 +107,7 @@ async def health_check() -> dict[str, str | datetime]:
     }
 
 
-@app.get("/cache/status", tags=["Cache"])
+@router.get("/cache/status", tags=["Cache"])
 async def cache_status() -> dict[str, str | None]:
     try:
         await cache_service.redis.ping()

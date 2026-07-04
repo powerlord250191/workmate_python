@@ -3,9 +3,9 @@ services:
     image: postgres:15-alpine
     container_name: spimex_postgres
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - POSTGRES_DB=${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
@@ -34,10 +34,13 @@ services:
       - spimex_network
 
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: dockerfile
     container_name: spimex_app
     ports:
       - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
@@ -45,27 +48,32 @@ services:
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
       - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./app/config.env:/app/app/config.env
+      - ./app/logs:/app/app/logs
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    volumes:
-      - ./logs:/app/logs
     networks:
       - spimex_network
     restart: unless-stopped
 
   migrations:
-    build: .
+    build:
+      context: .
+      dockerfile: dockerfile
     container_name: spimex_migrations
-    command: python -c "import asyncio; from database import engine, Base; from models import SpimexTradingResult; import asyncio; asyncio.run(engine.run_sync(Base.metadata.create_all));"
+    command: python init_db.py
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
+    volumes:
+      - ./app/config.env:/app/app/config.env
     depends_on:
       postgres:
         condition: service_healthy
