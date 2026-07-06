@@ -1,9 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 from fastapi import Depends, Query, APIRouter
-from services import (
-    TradingService,
-)
+from services import TradingService
 from schemas import (
     TradingResultResponse,
     TradingDateResponse,
@@ -11,8 +9,8 @@ from schemas import (
     LastTradingDatesParams,
     DynamicsParams,
 )
+from database import AsyncSessionLocal
 from repositories import TradingRepository
-from serializers import TradingSerializer
 from cache import cache_service
 
 router = APIRouter()
@@ -20,8 +18,8 @@ router = APIRouter()
 
 def get_trading_service() -> TradingService:
     repository = TradingRepository()
-    serializer = TradingSerializer()
-    return TradingService(repository, serializer)
+    session_factory = AsyncSessionLocal
+    return TradingService(repository, session_factory)
 
 
 @router.get("/", tags=["Root"])

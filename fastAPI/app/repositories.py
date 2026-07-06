@@ -6,7 +6,7 @@ from sqlalchemy import select, func, and_, desc
 from database import AsyncSessionLocal
 from models import SpimexTradingResult
 from filters import filtered_trading_results
-from serializers import TradingSerializer
+from serializers import serialize_trading_results
 
 
 class ABCTradingRepository(ABC):
@@ -102,7 +102,7 @@ class TradingRepository(ABCTradingRepository):
             result = await session.execute(query)
             rows = result.scalars().all()
 
-        return TradingSerializer().serialize_trading_results(rows)
+        return serialize_trading_results(rows)
 
     async def get_trading_results(
             self,
@@ -139,4 +139,4 @@ class TradingRepository(ABCTradingRepository):
             result = await session.execute(query)
             rows = result.scalars().all()
 
-        return TradingSerializer.serialize_trading_results(rows)
+        return serialize_trading_results(rows)

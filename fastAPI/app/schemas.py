@@ -1,4 +1,3 @@
-from typing import Optional
 import os
 from pydantic import BaseModel, Field, field_validator
 from datetime import date as date_type, datetime
@@ -54,9 +53,9 @@ class LastTradingDatesParams(BaseModel):
 class DynamicsParams(BaseModel):
     start_date: date_type = Field(..., description="Дата начала периода (обязательно)")
     end_date: date_type = Field(..., description="Дата конца периода (обязательно)")
-    oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID нефтепродукта")
-    delivery_type_id: Optional[str] = Field(None, min_length=1, max_length=1, description="ID типа поставки")
-    delivery_basis_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
+    oil_id: str | None = Field(None, min_length=1, max_length=10, description="ID нефтепродукта")
+    delivery_type_id: str | None = Field(None, min_length=1, max_length=1, description="ID типа поставки")
+    delivery_basis_id: str | None = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
 
     @field_validator('start_date', 'end_date')
     @classmethod
@@ -75,6 +74,6 @@ class DynamicsParams(BaseModel):
 
 
 class TradingResultsParams(BaseModel):
-    oil_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID продукта")
-    delivery_type_id: Optional[str] = Field(None, min_length=1, max_length=1, description="ID типа поставки")
-    delivery_basis_id: Optional[str] = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
+    oil_id: str | None = Field(None, min_length=1, max_length=10, description="ID продукта")
+    delivery_type_id: str | None = Field(None, min_length=1, max_length=1, description="ID типа поставки")
+    delivery_basis_id: str | None = Field(None, min_length=1, max_length=10, description="ID базиса поставки")
