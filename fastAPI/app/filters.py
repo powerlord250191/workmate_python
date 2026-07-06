@@ -1,3 +1,5 @@
+from sqlalchemy import BinaryExpression
+
 from models import SpimexTradingResult
 
 
@@ -5,7 +7,7 @@ def filtered_trading_results(
         oil_id: str | None = None,
         delivery_type_id: str | None = None,
         delivery_basis_id: str | None = None,
-) -> list:
+) -> list[BinaryExpression]:
 
     conditions = []
 

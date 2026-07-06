@@ -16,7 +16,7 @@ class ABCTradingRepository(ABC):
             self,
             session: AsyncSessionLocal,
             limit: int,
-    ) -> list:
+    ) -> list[tuple[date, int]]:
         pass
 
     @abstractmethod
@@ -102,7 +102,7 @@ class TradingRepository(ABCTradingRepository):
             result = await session.execute(query)
             rows = result.scalars().all()
 
-        return serialize_trading_results(rows)
+        return rows
 
     async def get_trading_results(
             self,
@@ -139,4 +139,4 @@ class TradingRepository(ABCTradingRepository):
             result = await session.execute(query)
             rows = result.scalars().all()
 
-        return serialize_trading_results(rows)
+        return rows
