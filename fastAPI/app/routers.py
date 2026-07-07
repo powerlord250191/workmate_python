@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Annotated
 from fastapi import Depends, Query, APIRouter
-from services import TradingService
+from repositories import TradingRepository
 from schemas import (
     TradingResultResponse,
     TradingDateResponse,
@@ -10,16 +10,14 @@ from schemas import (
     DynamicsParams,
 )
 from database import AsyncSessionLocal
-from repositories import TradingRepository
 from cache import cache_service
 
 router = APIRouter()
 
 
-def get_trading_service() -> TradingService:
-    repository = TradingRepository()
+def get_trading_repository() -> TradingRepository:
     session_factory = AsyncSessionLocal
-    return TradingService(repository, session_factory)
+    return TradingRepository(session_factory)
 
 
 @router.get("/", tags=["Root"])
@@ -41,19 +39,19 @@ async def root() -> dict[str, str | dict[str, str]]:
 @router.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
         params: Annotated[LastTradingDatesParams, Query()],
-        service: TradingService = Depends(get_trading_service),
+        repository: TradingRepository = Depends(get_trading_repository),
 ) -> list[TradingDateResponse]:
 
     cache_params = {"limit": params.limit}
 
-    result = await service.get_last_trading_dates(params.limit)
+    result = await repository.get_last_trading_dates(params.limit)
     return await cache_service.get_or_set("last_trading_dates", cache_params, result)
 
 
 @router.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
         params: DynamicsParams = Depends(),
-        service: TradingService = Depends(get_trading_service),
+        repository: TradingRepository = Depends(get_trading_repository),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -64,7 +62,7 @@ async def get_dynamics(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    result = await service.get_dynamics(
+    result = await repository.get_dynamics(
         oil_id=params.oil_id,
         delivery_type_id=params.delivery_type_id,
         delivery_basis_id=params.delivery_basis_id,
@@ -78,7 +76,7 @@ async def get_dynamics(
 @router.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
         params: TradingResultsParams = Depends(),
-        service: TradingService = Depends(get_trading_service),
+        repository: TradingRepository = Depends(get_trading_repository),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -87,7 +85,7 @@ async def get_trading_results(
         "delivery_basis_id": params.delivery_basis_id,
     }
 
-    result = await service.get_trading_results(
+    result = await repository.get_trading_results(
         oil_id=params.oil_id,
         delivery_type_id=params.delivery_type_id,
         delivery_basis_id=params.delivery_basis_id,
