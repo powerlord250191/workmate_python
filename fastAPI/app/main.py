@@ -1,7 +1,4 @@
-from app_factory import create_app
-from routers import router
+from .app_factory import create_app
 
 
 app = create_app()
-
-app.include_router(router=router)

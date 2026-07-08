@@ -1,15 +1,27 @@
 from datetime import datetime
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 from sqlalchemy import (
     String,
 )
-from .database import Base
+from .config_test import (
+    DB_NAME,
+    DB_PORT,
+    DB_HOST,
+    DB_USER,
+    DB_PASS,
+)
 
+
+class Base(DeclarativeBase):
+    pass
+
+
+TEST_DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
 
 str_200 = String(200)
 
 
-class SpimexTradingResult(Base):
+class SpimexTradingResultTest(Base):
     __tablename__ = 'spimex_trading_results'
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -26,6 +38,6 @@ class SpimexTradingResult(Base):
     count: Mapped[int]
     date: Mapped[datetime]
 
-    # def __repr__(self):
-    #     return (f"{self.id}, {self.date}, {self.oil_id}, {self.total}"
-    #             f"{self.volume}, {self.total}, {self.count}, {self.date}")
+    def __repr__(self):
+        return (f"{self.id}, {self.date}, {self.oil_id}, {self.total}"
+                f"{self.volume}, {self.total}, {self.count}, {self.date}")

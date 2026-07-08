@@ -2,7 +2,7 @@ import logging
 import redis.asyncio as redis
 from datetime import datetime, timedelta
 import json
-from schemas import Config
+from .schemas import Config
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

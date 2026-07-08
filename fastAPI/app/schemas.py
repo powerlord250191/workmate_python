@@ -1,7 +1,7 @@
 import os
 from pydantic import BaseModel, Field, field_validator
 from datetime import date as date_type, datetime
-from config import (
+from .config import (
     DB_PASS,
     DB_USER,
     DB_PORT,

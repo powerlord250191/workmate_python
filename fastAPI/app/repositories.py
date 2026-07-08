@@ -5,12 +5,11 @@ from abc import abstractmethod, ABC
 from sqlalchemy import select, func, and_, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from filters import filtered_trading_results
-from models import SpimexTradingResult
-from schemas import TradingResultResponse
-from serializers import serialize_trading_results, serialize_trading_dates
-
-from database import AsyncSessionLocal
+from .filters import filtered_trading_results
+from .models import SpimexTradingResult
+from .schemas import TradingResultResponse
+from .serializers import serialize_trading_results, serialize_trading_dates
+from .database import AsyncSessionLocal
 
 
 class ABCTradingRepository(ABC):

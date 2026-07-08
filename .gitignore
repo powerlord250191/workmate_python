@@ -57,7 +57,7 @@ var/
 pip-log.txt
 pip-delete-this-directory.txt
 
-# Unit test / coverage reports
+# Unit practic_db / coverage reports
 htmlcov/
 .tox/
 .coverage
@@ -89,3 +89,5 @@ db.sqlite3
 ./DataBase/config.env
 /DataBase/config.env
 /DataBase/work_task/bulletins/
+/fastAPI/app/tests/config.env
+

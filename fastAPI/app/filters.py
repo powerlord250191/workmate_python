@@ -1,6 +1,6 @@
 from sqlalchemy import BinaryExpression
 
-from models import SpimexTradingResult
+from .models import SpimexTradingResult
 
 
 def filtered_trading_results(

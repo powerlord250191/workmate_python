@@ -1,16 +1,16 @@
 from datetime import datetime
 from typing import Annotated
 from fastapi import Depends, Query, APIRouter
-from repositories import TradingRepository
-from schemas import (
+from .repositories import TradingRepository
+from .schemas import (
     TradingResultResponse,
     TradingDateResponse,
     TradingResultsParams,
     LastTradingDatesParams,
     DynamicsParams,
 )
-from database import AsyncSessionLocal
-from cache import cache_service
+from .database import AsyncSessionLocal
+from .cache import cache_service
 
 router = APIRouter()
 

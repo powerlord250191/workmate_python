@@ -1,5 +1,5 @@
-from models import SpimexTradingResult
-from schemas import TradingResultResponse
+from .models import SpimexTradingResult
+from .schemas import TradingResultResponse
 
 
 def serialize_trading_results(rows: list[SpimexTradingResult]) -> list[TradingResultResponse]:
