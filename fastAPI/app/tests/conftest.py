@@ -12,13 +12,6 @@ from app.routers import get_trading_repository
 from .database_test import Base, SpimexTradingResultTest, TEST_DATABASE_URL
 
 
-@pytest.fixture(scope="session")
-def event_loop():
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
-
-
 @pytest.fixture(scope="function")
 async def engine():
 

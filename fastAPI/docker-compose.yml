@@ -60,6 +60,19 @@ services:
       - spimex_network
     restart: unless-stopped
 
+  rabbitmq:
+    image: rabbitmq:3.12-management
+    hostname: rabbitmq
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: "guest"
+      RABBITMQ_DEFAULT_PASSWORD: "guest"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
   migrations:
     build:
       context: .
@@ -84,6 +97,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  rabbitmq-data:
 
 networks:
   spimex_network:
