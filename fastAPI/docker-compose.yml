@@ -1,19 +1,21 @@
+version: '3.8'
+
 services:
   postgres:
     image: postgres:15-alpine
     container_name: spimex_postgres
     environment:
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASS}
-      - POSTGRES_DB=${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASS}
+      POSTGRES_DB: ${DB_NAME}
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
+      interval: 5s
+      timeout: 3s
       retries: 5
     networks:
       - spimex_network
@@ -27,6 +29,25 @@ services:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - spimex_network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: spimex_rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RMQ_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RMQ_PASSWORD:-guest}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,7 +57,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: spimex_app
     ports:
       - "8000:8000"
@@ -48,35 +69,28 @@ services:
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
       - REDIS_URL=redis://redis:6379/0
-    volumes:
-      - ./app/config.env:/app/app/config.env
-      - ./app/logs:/app/app/logs
+      - RMQ_HOST=rabbitmq
+      - RMQ_PORT=5672
+      - RMQ_USER=${RMQ_USER:-guest}
+      - RMQ_PASSWORD=${RMQ_PASSWORD:-guest}
+      - MQ_ROUTING_KEY=trading_service
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./app/logs:/app/app/logs
     networks:
       - spimex_network
     restart: unless-stopped
 
-  rabbitmq:
-    image: rabbitmq:3.12-management
-    hostname: rabbitmq
-    container_name: rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: "guest"
-      RABBITMQ_DEFAULT_PASSWORD: "guest"
-    volumes:
-      - rabbitmq-data:/var/lib/rabbitmq
-
   migrations:
     build:
       context: .
-      dockerfile: dockerfile
+      dockerfile: Dockerfile
     container_name: spimex_migrations
     command: python init_db.py
     environment:
@@ -85,8 +99,6 @@ services:
       - DB_USER=${DB_USER}
       - DB_PASS=${DB_PASS}
       - DB_NAME=${DB_NAME}
-    volumes:
-      - ./app/config.env:/app/app/config.env
     depends_on:
       postgres:
         condition: service_healthy
@@ -97,7 +109,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  rabbitmq-data:
+  rabbitmq_data:
 
 networks:
   spimex_network:

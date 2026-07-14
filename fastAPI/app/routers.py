@@ -1,7 +1,6 @@
 from datetime import datetime
-from typing import Annotated
 import logging
-from asyncio import get_event_loop, sleep
+from asyncio import sleep, get_running_loop
 from fastapi import Depends, Query, APIRouter, HTTPException, status
 from .repositories import TradingRepository
 from .schemas import (
@@ -12,13 +11,12 @@ from .schemas import (
     DynamicsParams,
 )
 from .database import AsyncSessionLocal
-from .cache import cache_service
+from .cache import create_cache
 from .producer import publish_message
-from .consumer import start_consumer
-from .config import configure_logging
 
 
 router = APIRouter()
+cache_service = create_cache()
 logger = logging.getLogger("Router logger")
 
 
@@ -33,37 +31,20 @@ async def wait_for_cache_result(
         timeout: float = 30.0,
         check_interval: float = 0.5
 ) -> list | None:
-    """
-    Ожидает появления результата в кэше.
-
-    Args:
-        key: префикс ключа
-        params: параметры для ключа
-        timeout: максимальное время ожидания (сек)
-        check_interval: интервал проверки (сек)
-
-    Returns:
-        Результат из кэша или None по таймауту
-    """
-    start_time = get_event_loop().time()
+    loop = get_running_loop()
+    start_time = loop.time()
 
     while True:
         result = await cache_service.get(key, params)
         if result is not None:
-            logger.info(f"Result found in cache after {get_event_loop().time() - start_time:.2f}s")
+            logger.info(f"Result found in cache after {loop.time() - start_time:.2f}s")
             return result
 
-        if get_event_loop().time() - start_time > timeout:
+        if loop.time() - start_time > timeout:
             logger.error(f"Timeout waiting for result in cache ({timeout}s)")
             return None
 
         await sleep(check_interval)
-
-
-@router.on_event("startup")
-async def startup_event():
-    configure_logging(level=logging.INFO)
-    await start_consumer()
 
 
 @router.get("/", tags=["Root"])
@@ -84,13 +65,13 @@ async def root() -> dict[str, str | dict[str, str]]:
 
 @router.get("/last_trading_dates", tags=["Trading"])
 async def get_last_trading_dates(
-        params: Annotated[LastTradingDatesParams, Query()],
+        params: LastTradingDatesParams = Depends(),
 ) -> list[TradingDateResponse] | None:
 
     cache_params = {
         "limit": params.limit,
-        "router": "get_last_trading_dates",
-        }
+        "router": "last_trading_dates",
+    }
 
     cached_result = await cache_service.get("last_trading_dates", cache_params)
     if cached_result is not None:
@@ -112,7 +93,6 @@ async def get_last_trading_dates(
 @router.get("/dynamics", tags=["Trading"])
 async def get_dynamics(
         params: DynamicsParams = Depends(),
-        repository: TradingRepository = Depends(get_trading_repository),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
@@ -121,38 +101,55 @@ async def get_dynamics(
         "oil_id": params.oil_id,
         "delivery_type_id": params.delivery_type_id,
         "delivery_basis_id": params.delivery_basis_id,
+        "router": "dynamics",
     }
 
-    result = await repository.get_dynamics(
-        oil_id=params.oil_id,
-        delivery_type_id=params.delivery_type_id,
-        delivery_basis_id=params.delivery_basis_id,
-        start_date=params.start_date,
-        end_date=params.end_date,
-    )
+    cached_result = await cache_service.get("dynamics", cache_params)
 
-    return await cache_service.get_or_set("dynamics", cache_params, result)
+    if cached_result is not None:
+        return cached_result
+
+    await publish_message(data=cache_params)
+
+    result = await wait_for_cache_result("dynamics", cache_params)
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Gateway Timeout: Consumer did not respond"
+        )
+
+    return result
 
 
 @router.get("/trading_results", tags=["Trading"])
 async def get_trading_results(
         params: TradingResultsParams = Depends(),
-        repository: TradingRepository = Depends(get_trading_repository),
 ) -> list[TradingResultResponse]:
 
     cache_params = {
         "oil_id": params.oil_id,
         "delivery_type_id": params.delivery_type_id,
         "delivery_basis_id": params.delivery_basis_id,
+        "router": "trading_results",
     }
 
-    result = await repository.get_trading_results(
-        oil_id=params.oil_id,
-        delivery_type_id=params.delivery_type_id,
-        delivery_basis_id=params.delivery_basis_id,
-    )
+    cached_result = await cache_service.get("trading_results", cache_params)
 
-    return await cache_service.get_or_set("trading_results", cache_params, result)
+    if cached_result is not None:
+        return cached_result
+
+    await publish_message(data=cache_params)
+
+    result = await wait_for_cache_result("dynamics", cache_params)
+
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Gateway Timeout: Consumer did not respond"
+        )
+
+    return result
 
 
 @router.get("/health", tags=["Health"])

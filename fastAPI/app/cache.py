@@ -13,8 +13,8 @@ class CacheService:
         self.redis = redis.Redis.from_url(
             Config.REDIS_URL,
             decode_responses=True,
-            socket_timeout=2,
-            socket_connect_timeout=2,
+            socket_timeout=10,
+            socket_connect_timeout=10,
             retry_on_timeout=True
         )
 
@@ -63,4 +63,6 @@ class CacheService:
         return result
 
 
-cache_service = CacheService()
+def create_cache():
+    cache_service = CacheService()
+    return cache_service
